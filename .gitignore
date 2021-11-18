@@ -1,0 +1,9 @@
+/*
+!/wp-content
+/wp-content/*
+!/wp-content/plugins
+/wp-content/plugins/*
+!/wp-content/plugins/fhs-stock-updater
+!.gitignore 
+!.cpanel.yml
+/wp-content/plugins/fhs-stock-updater/node_modules
