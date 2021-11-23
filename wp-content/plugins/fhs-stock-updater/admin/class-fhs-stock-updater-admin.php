@@ -54,7 +54,8 @@ class Fhs_Stock_Updater_Admin {
 
 		
 		add_action('admin_menu', [&$this, "create_admin_menu"]);
-		add_action('admin_post');
+		add_action("admin_post_fhs_su_upload_stock", [&$this, "handle_upload"]);
+		// add_action('admin_post');
 
 	}
 
@@ -62,15 +63,17 @@ class Fhs_Stock_Updater_Admin {
 		add_menu_page('Upload Stock', 'Upload Stock', 'administrator', "upload-stock", [&$this, "stock_form"]);
 	}
 
+
 	public function stock_form() {
 		$fhs_su_upload_nonce = wp_create_nonce( 'fhs_su_upload_stock_form_nonce' );
 		?>
 		<div class="wrap">
+			<?php echo "<h2>" . __( 'Upload Stock', 'upload-stock' ) . "</h2>"; ?>
 			<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" id="fhs_su_upload_stock_form" enctype="multipart/form-data">
 				<input type="file" name="fhs_su_upload_stock_file" id="fhs_su_upload_stock_file" />
 				<input type="hidden" name="action" value="fhs_su_upload_stock">
 				<input type="hidden" name="fhs_su_upload_stock_form_nonce" value="<?php echo $fhs_su_upload_nonce; ?>" />
-				<input type="button" name="submit" value="Upload">
+				<input type="submit" name="submit" value="Upload" class="button">
 			</form>
 		</div>
 		<?php 
@@ -119,6 +122,60 @@ class Fhs_Stock_Updater_Admin {
 		 */
 
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/fhs-stock-updater-admin.js', array( 'jquery' ), $this->version, false );
+
+	}
+
+	public function handle_upload() {
+		echo "Upload!";
+		echo "<pre>" . print_r($_FILES, true) . "</pre>";
+
+		// if (count($_FILES) == 0) {
+		// 	return;
+		// }
+
+		$stream = fopen($_FILES["fhs_su_upload_stock_file"]["tmp_name"], "r");
+
+		$csv = fgetcsv($stream);
+		$count = 0;
+
+		while (true) {
+			$data = fgetcsv($stream);
+			if (!$data) {
+				break;
+			}
+
+			
+			$sku = $data[50];
+			$price = $data[18];
+			$stock_level = $data[25];
+
+			if ($stock_level < 0) {
+				$stock_level = 0;
+			}
+			
+			if (!($sku && $price)) {
+				continue;
+			}
+
+			// echo "SKU: $sku, Price: $price, Stock: $stock_level <br>";
+			
+			$product_id = wc_get_product_id_by_sku($sku);
+			if (!$product_id) {
+				continue;
+				// Create Product?
+			}
+
+			if ($product_id == 2084) {
+				echo "Stock: $stock_level, ";
+			}
+			
+			update_post_meta($product_id, "_manage_stock", "yes");
+			update_post_meta($product_id, '_regular_price', (float)$price);
+			echo wc_update_product_stock($product_id, $stock_level) . "<br>";
+			wc_delete_product_transients($product_id);
+
+			
+		}
 
 	}
 
